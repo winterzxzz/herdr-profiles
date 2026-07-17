@@ -36,9 +36,9 @@ Mỗi JSON set riêng `"model"` và `"effortLevel"` (values: `low`, `medium`,
 
 | Profile | Model | Effort |
 | --- | --- | --- |
-| orchestrator | `opus` | `high` — phán đoán, challenge, quyết định điều phối |
-| implementer | `sonnet` | `medium` — đủ cho code casual |
-| peer | `sonnet` | `medium` — review, phản biện |
+| orchestrator | `fable` (Fable 5 — mạnh nhất) | `high` — phán đoán, challenge, quyết định điều phối |
+| implementer | `claude-sonnet-4-6` | `medium` — đủ cho code casual |
+| peer | `claude-sonnet-4-6` | `medium` — review, phản biện |
 
 Feature khó thì nâng implementer: sửa JSON hoặc truyền `--model opus` khi
 launch (wrapper nhận `"$@"`).
