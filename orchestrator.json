@@ -1,0 +1,28 @@
+{
+  "model": "sonnet",
+  "permissions": {
+    "deny": [
+      "Edit",
+      "Write",
+      "NotebookEdit",
+      "Task",
+      "Agent"
+    ],
+    "allow": [
+      "Bash(herdr:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree list:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(jq:*)",
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  }
+}
