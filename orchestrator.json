@@ -2,6 +2,7 @@
   "model": "opus",
   "effortLevel": "high",
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "deny": [
       "Edit",
       "Write",

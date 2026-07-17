@@ -131,3 +131,9 @@ còn skill built-in của Claude Code. Nghĩa là:
 
 - `orchestrator.sh` chạy ngoài Herdr sẽ tự từ chối điều khiển (check
   `HERDR_ENV=1`) — đúng thiết kế.
+- Orchestrator chạy `bypassPermissions`: không hỏi permission, deny rules
+  vẫn enforce (đã test: tool `Write` bị loại khỏi session). Nhưng Bash thì
+  không giới hạn — nó có thể ghi file qua shell redirection. Đường này chỉ
+  chặn được bằng instruction ("mọi thay đổi repo đi qua implementer"), nên
+  chỉ dùng bypass trên máy local tự giám sát, không dùng nơi có credentials
+  production.
