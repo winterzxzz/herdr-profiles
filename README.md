@@ -31,14 +31,14 @@ phối, 1 implementer duy nhất được sửa code, peer sinh ra ad-hoc để 
 
 ### Model & effort per profile
 
-Mỗi JSON set riêng `"model"` và thinking budget (`MAX_THINKING_TOKENS` trong
-block `"env"` — knob tương đương "reasoning effort" của codex):
+Mỗi JSON set riêng `"model"` và `"effortLevel"` (values: `low`, `medium`,
+`high`, `xhigh`, `max` — tương đương reasoning effort của codex):
 
-| Profile | Model | Thinking |
+| Profile | Model | Effort |
 | --- | --- | --- |
-| orchestrator | `opus` | 32000 — phán đoán, challenge, quyết định điều phối |
-| implementer | `sonnet` | 10000 — đủ cho code casual |
-| peer | `sonnet` | 4096 — review nhanh |
+| orchestrator | `opus` | `high` — phán đoán, challenge, quyết định điều phối |
+| implementer | `sonnet` | `medium` — đủ cho code casual |
+| peer | `sonnet` | `medium` — review, phản biện |
 
 Feature khó thì nâng implementer: sửa JSON hoặc truyền `--model opus` khi
 launch (wrapper nhận `"$@"`).

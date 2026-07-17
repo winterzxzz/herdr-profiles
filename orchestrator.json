@@ -1,8 +1,6 @@
 {
   "model": "opus",
-  "env": {
-    "MAX_THINKING_TOKENS": "32000"
-  },
+  "effortLevel": "high",
   "permissions": {
     "deny": [
       "Edit",

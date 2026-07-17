@@ -1,8 +1,6 @@
 {
   "model": "sonnet",
-  "env": {
-    "MAX_THINKING_TOKENS": "10000"
-  },
+  "effortLevel": "medium",
   "permissions": {
     "defaultMode": "acceptEdits",
     "deny": [
