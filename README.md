@@ -116,11 +116,18 @@ User ──nói chuyện──> Orchestrator (pane gốc, không edit được)
 - **Fail 2 lần thì escalate**: implementer trượt cùng task 2 lần → không retry
   nữa, gom report + transcript, tóm tắt cho user thật và chờ chỉ đạo.
 
+## Skills
+
+Cả 3 profile đều chạy `--setting-sources project,local` — đã verify thực tế:
+flag này cắt toàn bộ user skills (`~/.claude/skills`) và plugin skills, chỉ
+còn skill built-in của Claude Code. Nghĩa là:
+
+- Implementer/peer không bao giờ thấy skill `herdr` → premise "không biết bị
+  điều khiển" kín.
+- Orchestrator không load skill `herdr` → không trùng/lệch với instruction
+  trong system prompt, không mất khi compact.
+
 ## Giới hạn đã biết
 
-- Skill ở `~/.claude/skills` có thể vẫn hiện trong listing của implementer
-  (skill discovery không chắc theo `--setting-sources`). Muốn kín tuyệt đối:
-  dùng `CLAUDE_CONFIG_DIR` riêng — đổi lại phải login lại, nên mặc định chưa
-  bật.
 - `orchestrator.sh` chạy ngoài Herdr sẽ tự từ chối điều khiển (check
   `HERDR_ENV=1`) — đúng thiết kế.
