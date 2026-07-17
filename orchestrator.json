@@ -1,5 +1,8 @@
 {
-  "model": "sonnet",
+  "model": "opus",
+  "env": {
+    "MAX_THINKING_TOKENS": "32000"
+  },
   "permissions": {
     "deny": [
       "Edit",

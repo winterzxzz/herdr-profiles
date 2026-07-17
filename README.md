@@ -29,9 +29,19 @@ phối, 1 implementer duy nhất được sửa code, peer sinh ra ad-hoc để 
 | `peer.sh` / `peer.json` | Reviewer/critic read-only. Chỉ `Read`/`Grep`/`git diff|log|show`. Deny edit, commit, herdr. |
 | `herdr-instructions.md` | Toàn bộ hướng dẫn dùng CLI `herdr` + quy ước điều phối (chi tiết bên dưới). Được nhét vào system prompt của orchestrator. |
 
-Cả 3 profile mặc định model `sonnet` (tương đương "medium"). Feature khó thì
-sửa `"model"` trong JSON hoặc truyền `--model opus` khi launch (wrapper nhận
-`"$@"`).
+### Model & effort per profile
+
+Mỗi JSON set riêng `"model"` và thinking budget (`MAX_THINKING_TOKENS` trong
+block `"env"` — knob tương đương "reasoning effort" của codex):
+
+| Profile | Model | Thinking |
+| --- | --- | --- |
+| orchestrator | `opus` | 32000 — phán đoán, challenge, quyết định điều phối |
+| implementer | `sonnet` | 10000 — đủ cho code casual |
+| peer | `sonnet` | 4096 — review nhanh |
+
+Feature khó thì nâng implementer: sửa JSON hoặc truyền `--model opus` khi
+launch (wrapper nhận `"$@"`).
 
 ## Cách chạy
 
