@@ -3,7 +3,7 @@ model_reasoning_effort = "xhigh"
 model_verbosity = "medium"
 personality = "pragmatic"
 approval_policy = "never"
-sandbox_mode = "read-only"
+sandbox_mode = "danger-full-access"
 web_search = "disabled"
 
 [features]

@@ -33,6 +33,18 @@ class CodexProfileTests(unittest.TestCase):
             with self.subTest(path=path.name):
                 tomllib.loads(path.read_text(encoding="utf-8"))
 
+    def test_sandbox_modes_match_claude_role_permissions(self) -> None:
+        expected_modes = {
+            "codex-orchestrator.config.toml": "danger-full-access",
+            "codex-implementer.config.toml": "workspace-write",
+            "codex-peer.config.toml": "read-only",
+        }
+        for filename, expected_mode in expected_modes.items():
+            with self.subTest(filename=filename):
+                config = tomllib.loads((ROOT / filename).read_text(encoding="utf-8"))
+                self.assertEqual(config["approval_policy"], "never")
+                self.assertEqual(config["sandbox_mode"], expected_mode)
+
     def test_orchestrator_policy(self) -> None:
         self.assertEqual(policy("orchestrator", "Bash", "herdr pane list"), {})
         self.assertEqual(policy("orchestrator", "Bash", "git diff --stat"), {})

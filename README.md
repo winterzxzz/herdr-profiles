@@ -52,10 +52,12 @@ Ba profile Codex mặc định dùng `gpt-5.6-sol`. Root dùng `xhigh`; implemen
 và peer dùng `medium`. Có thể override theo phiên bằng `--model` và
 `--config model_reasoning_effort='"high"'`.
 
-Codex không có permission JSON giống Claude Code. Bản Codex dùng hai lớp:
+Codex không có permission JSON giống Claude Code. Bản Codex map quyền theo vai:
 
-- `sandbox_mode = "read-only"` cho root/peer và `workspace-write` cho
-  implementer;
+- orchestrator dùng `danger-full-access` + `approval_policy = "never"`, tương
+  đương `bypassPermissions` của Claude;
+- implementer dùng `workspace-write` + `approval_policy = "never"`, tương
+  đương `acceptEdits`; peer dùng `read-only`;
 - `PreToolUse` hook để khóa command/tool theo vai và
   `[features] multi_agent = false` để Herdr là protocol nhân sự duy nhất.
 
@@ -82,8 +84,8 @@ Installer chỉ tạo symlink sau, không thay `~/.codex/config.toml`:
 
 Lần đầu chạy một profile, Codex sẽ báo hook chưa được trust. Mở `/hooks`, đọc
 definition rồi trust `herdr-profile-policy.py`. Hook chưa được trust sẽ bị
-Codex skip; sandbox vẫn giữ root/peer read-only, nhưng policy command chi tiết
-chưa đầy đủ cho tới khi trust xong.
+Codex skip. Không giao việc cho orchestrator trước khi trust xong vì profile
+này chạy `danger-full-access`; lúc đó instruction là hàng rào duy nhất.
 
 ## Cách chạy
 
@@ -182,10 +184,10 @@ còn skill built-in của Claude Code. Nghĩa là:
   chặn được bằng instruction ("mọi thay đổi repo đi qua implementer"), nên
   chỉ dùng bypass trên máy local tự giám sát, không dùng nơi có credentials
   production.
-- Codex root/peer dùng read-only sandbox thay vì full access. Cần test một
-  feature nhỏ trên bản Herdr đang cài để xác nhận sandbox của hệ điều hành cho
-  phép CLI `herdr` kết nối tới runtime. Nếu `herdr` bị sandbox chặn, không đổi
-  sang `danger-full-access` trước khi policy hook đã được trust và kiểm thử.
+- Codex orchestrator dùng full access để CLI `herdr` kết nối runtime mà không
+  bị sandbox chặn. Giống Claude `bypassPermissions`, policy hook chặn tool edit
+  nhưng lệnh `herdr` vẫn có quyền điều khiển pane; chỉ dùng sau khi review và
+  trust hook.
 - Named profile Codex overlay lên user config. `multi_agent`, memories và web
   search được tắt trong từng profile, nhưng Codex hiện không có equivalent tổng
   quát của Claude `--setting-sources project,local` để bỏ mọi user skill.

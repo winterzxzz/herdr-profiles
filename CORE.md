@@ -100,7 +100,7 @@ gì.
 | --- | --- | --- |
 | Profile | `--settings x.json` + wrapper | `$CODEX_HOME/<name>.config.toml` + `--profile x` |
 | Effort | `"effortLevel"` (`low..max`) | `model_reasoning_effort` |
-| Chặn edit | permissions deny `Edit`/`Write` | read-only sandbox + `PreToolUse` hook |
+| Chặn edit | permissions deny `Edit`/`Write` | root: `PreToolUse` hook; peer: read-only sandbox + hook |
 | Cắt user skills | `--setting-sources project,local` | kiểm tra AGENTS.md/config không nhắc herdr |
 | Instruction root | `--append-system-prompt` | wrapper set `developer_instructions` |
 | Tắt sub-agent | deny `Task`/`Agent` | `[features] multi_agent = false` + hook |
