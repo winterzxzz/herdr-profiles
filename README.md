@@ -1,6 +1,6 @@
 # herdr-profiles
 
-Bộ 3 profile Claude Code để điều phối multi-agent bên trong [Herdr](https://herdr.dev)
+Hai bộ 3 profile Claude Code và OpenAI Codex để điều phối multi-agent bên trong [Herdr](https://herdr.dev)
 (terminal multiplexer cho coding agent). Mô hình: **1 root orchestrator điều
 phối, 1 implementer duy nhất được sửa code, peer sinh ra ad-hoc để phản biện**.
 
@@ -27,6 +27,9 @@ phối, 1 implementer duy nhất được sửa code, peer sinh ra ad-hoc để 
 | `orchestrator.sh` / `orchestrator.json` | Root. Load full herdr instruction vào system prompt. Deny `Edit`/`Write`/`Task`/`Agent`, allow `Bash(herdr:*)` + lệnh đọc. |
 | `implementer.sh` / `implementer.json` | Đứa duy nhất được edit. Strip toàn bộ env `HERDR_*`, `--setting-sources project,local` (bỏ user settings). `acceptEdits` + allowlist git/test/build rộng để không bị hỏi vặt. Deny `herdr`, `git push`. |
 | `peer.sh` / `peer.json` | Reviewer/critic read-only. Chỉ `Read`/`Grep`/`git diff|log|show`. Deny edit, commit, herdr. |
+| `codex-*.sh` / `codex-*.config.toml` | Ba profile tương ứng cho Codex CLI. Dùng named profile, sandbox và policy hook. |
+| `install-codex.sh` | Link named profiles và policy hook vào `$CODEX_HOME` (mặc định `~/.codex`). |
+| `herdr-profile-policy.py` | `PreToolUse` policy fail-closed: khóa edit/delegation ở root/peer, khóa `herdr` và `git push` ở implementer. |
 | `herdr-instructions.md` | Toàn bộ hướng dẫn dùng CLI `herdr` + quy ước điều phối (chi tiết bên dưới). Được nhét vào system prompt của orchestrator. |
 
 ### Model & effort per profile
@@ -43,6 +46,45 @@ Mỗi JSON set riêng `"model"` và `"effortLevel"` (values: `low`, `medium`,
 Feature khó thì nâng implementer: sửa JSON hoặc truyền `--model opus` khi
 launch (wrapper nhận `"$@"`).
 
+### Codex model & effort
+
+Ba profile Codex mặc định dùng `gpt-5.6-sol`. Root dùng `xhigh`; implementer
+và peer dùng `medium`. Có thể override theo phiên bằng `--model` và
+`--config model_reasoning_effort='"high"'`.
+
+Codex không có permission JSON giống Claude Code. Bản Codex dùng hai lớp:
+
+- `sandbox_mode = "read-only"` cho root/peer và `workspace-write` cho
+  implementer;
+- `PreToolUse` hook để khóa command/tool theo vai và
+  `[features] multi_agent = false` để Herdr là protocol nhân sự duy nhất.
+
+## Cài cho Codex
+
+Yêu cầu Codex CLI hỗ trợ named profile v2 và hooks (đã verify với
+`codex-cli 0.144.5`). Clone repo đúng đường dẫn mà instruction mặc định dùng,
+sau đó cài profile:
+
+```bash
+git clone https://github.com/winterzxzz/herdr-profiles ~/.herdr-profiles
+cd ~/.herdr-profiles
+./install-codex.sh
+```
+
+Installer chỉ tạo symlink sau, không thay `~/.codex/config.toml`:
+
+```text
+~/.codex/herdr-orchestrator.config.toml
+~/.codex/herdr-implementer.config.toml
+~/.codex/herdr-peer.config.toml
+~/.codex/herdr-profile-policy.py
+```
+
+Lần đầu chạy một profile, Codex sẽ báo hook chưa được trust. Mở `/hooks`, đọc
+definition rồi trust `herdr-profile-policy.py`. Hook chưa được trust sẽ bị
+Codex skip; sandbox vẫn giữ root/peer read-only, nhưng policy command chi tiết
+chưa đầy đủ cho tới khi trust xong.
+
 ## Cách chạy
 
 ```bash
@@ -51,6 +93,9 @@ herdr
 
 # 2. Trong pane, chạy orchestrator
 ~/.herdr-profiles/orchestrator.sh
+
+# Hoặc chạy Codex orchestrator
+~/.herdr-profiles/codex-orchestrator.sh
 
 # 3. Giao việc bằng ngôn ngữ thường
 #    "Tạo worktree cho feature X, spawn implementer làm ..., xong gọi peer review"
@@ -137,3 +182,10 @@ còn skill built-in của Claude Code. Nghĩa là:
   chặn được bằng instruction ("mọi thay đổi repo đi qua implementer"), nên
   chỉ dùng bypass trên máy local tự giám sát, không dùng nơi có credentials
   production.
+- Codex root/peer dùng read-only sandbox thay vì full access. Cần test một
+  feature nhỏ trên bản Herdr đang cài để xác nhận sandbox của hệ điều hành cho
+  phép CLI `herdr` kết nối tới runtime. Nếu `herdr` bị sandbox chặn, không đổi
+  sang `danger-full-access` trước khi policy hook đã được trust và kiểm thử.
+- Named profile Codex overlay lên user config. `multi_agent`, memories và web
+  search được tắt trong từng profile, nhưng Codex hiện không có equivalent tổng
+  quát của Claude `--setting-sources project,local` để bỏ mọi user skill.

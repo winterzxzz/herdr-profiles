@@ -22,8 +22,8 @@ compact là mất, root "quên" protocol giữa chừng mà không tự biết.
 Instruction phải nằm ở tầng được gửi lại nguyên vẹn mỗi request:
 
 - Claude: `--append-system-prompt "$(cat herdr-instructions.md)"`
-- Codex: instruction key trong profile (**verify key trong `codex --help`
-  bản đang cài**)
+- Codex: `developer_instructions` được wrapper nạp từ
+  `herdr-instructions.md`; key này được gửi lại ở tầng developer instruction.
 
 ## 3. Implementer mù
 
@@ -83,10 +83,9 @@ Nhét chung vào instruction của root:
 
 - Claude: không có named profile → wrapper script ghép
   `--settings` + `--setting-sources` + `--append-system-prompt` + strip env.
-- Codex: có `[profiles.x]` + `codex --profile x` nên config khỏi cần
-  wrapper — nhưng **vẫn cần wrapper mỏng cho implementer** để strip env
-  (`env -u HERDR_ENV ... codex --profile implementer`); TOML không strip
-  env được.
+- Codex: profile hiện là file riêng `$CODEX_HOME/<name>.config.toml`, được
+  chọn bằng `codex --profile <name>`. Vẫn cần wrapper mỏng để strip env ở
+  implementer/peer và nạp instruction root từ file.
 
 ## 8. Đi từ từ
 
@@ -99,12 +98,12 @@ gì.
 
 | Thứ | Claude Code | Codex |
 | --- | --- | --- |
-| Profile | `--settings x.json` + wrapper | `[profiles.x]` + `--profile x` |
+| Profile | `--settings x.json` + wrapper | `$CODEX_HOME/<name>.config.toml` + `--profile x` |
 | Effort | `"effortLevel"` (`low..max`) | `model_reasoning_effort` |
-| Chặn edit | permissions deny `Edit`/`Write` | `sandbox_mode` read-only / approval policy |
+| Chặn edit | permissions deny `Edit`/`Write` | read-only sandbox + `PreToolUse` hook |
 | Cắt user skills | `--setting-sources project,local` | kiểm tra AGENTS.md/config không nhắc herdr |
-| Instruction root | `--append-system-prompt` | instruction key trong profile (**verify**) |
-| Tắt sub-agent | deny `Task`/`Agent` | verify cơ chế tương ứng bản đang cài |
+| Instruction root | `--append-system-prompt` | wrapper set `developer_instructions` |
+| Tắt sub-agent | deny `Task`/`Agent` | `[features] multi_agent = false` + hook |
 
 **Nguyên tắc verify**: mọi key/flag đánh dấu *verify* phải check bằng
 `codex --help` / docs bản đang cài, không tin trí nhớ model — bài học từ vụ

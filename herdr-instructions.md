@@ -90,7 +90,7 @@ launch the agent interactively (no argv prompt, no non-interactive flags):
 
 ```bash
 herdr pane rename <pane-id> "implementer"
-herdr pane run <pane-id> "~/.herdr-profiles/implementer.sh"
+herdr pane run <pane-id> "<implementer-wrapper>"
 ```
 
 Wait for the agent to reach its prompt, then submit the task:
@@ -145,10 +145,18 @@ evidence.
 
 Launch agents only through these wrappers (they carry permissions and env):
 
-- Implementer: `~/.herdr-profiles/implementer.sh` — the ONLY profile allowed
-  to edit files. One implementer per feature, one feature per worktree.
-- Peer: `~/.herdr-profiles/peer.sh` — read-only reviewer/critic. Spawn ad hoc,
-  close its pane when its job is finished (you created it, so you may close it).
+- Claude root: use `~/.herdr-profiles/implementer.sh` and
+  `~/.herdr-profiles/peer.sh`.
+- Codex root: use `~/.herdr-profiles/codex-implementer.sh` and
+  `~/.herdr-profiles/codex-peer.sh`.
+- The implementer wrapper is the ONLY profile allowed to edit files. Use one
+  implementer per feature and one feature per worktree.
+- The peer wrapper is read-only. Spawn peers ad hoc and close their panes when
+  their work is finished (you created them, so you may close them).
+
+Use the wrapper family matching your own runtime. Never mix Claude and Codex
+profiles within one orchestration run unless the real user explicitly asks for
+a mixed-provider run.
 
 ### Implementer protocol
 
