@@ -1,6 +1,6 @@
 # herdr-profiles
 
-Hai bộ 3 profile Claude Code và OpenAI Codex để điều phối multi-agent bên trong [Herdr](https://herdr.dev)
+Ba bộ 3 profile Claude Code, OpenAI Codex, và opencode để điều phối multi-agent bên trong [Herdr](https://herdr.dev)
 (terminal multiplexer cho coding agent). Mô hình: **1 root orchestrator điều
 phối, 1 implementer duy nhất được sửa code, peer sinh ra ad-hoc để phản biện**.
 
@@ -30,6 +30,9 @@ phối, 1 implementer duy nhất được sửa code, peer sinh ra ad-hoc để 
 | `codex-*.sh` / `codex-*.config.toml` | Ba profile tương ứng cho Codex CLI. Dùng named profile, sandbox và policy hook. |
 | `install-codex.sh` | Link named profiles và policy hook vào `$CODEX_HOME` (mặc định `~/.codex`). |
 | `herdr-profile-policy.py` | `PreToolUse` policy fail-closed: khóa edit/delegation ở root/peer, khóa `herdr` và `git push` ở implementer. |
+| `opencode-orchestrator.sh` | opencode root. Đọc `herdr-instructions.md` lúc chạy, nhét vào `OPENCODE_CONFIG_CONTENT` (inline config, ưu tiên cao hơn project config). Deny `edit`/`task`/`skill`, allowlist bash hẹp. |
+| `opencode-implementer.json` / `.sh` | opencode implementer (agent name `coder`). Static config không chứa herdr string: deny `herdr` + `git push` trong bash, tắt `bridgememory` MCP. Wrapper strip `HERDR_*` env. |
+| `opencode-peer.json` / `.sh` | opencode peer reviewer (agent name `reviewer`). Static config không chứa herdr string: read-only bash + deny `edit`/`task`. Wrapper strip `HERDR_*` env. |
 | `herdr-instructions.md` | Toàn bộ hướng dẫn dùng CLI `herdr` + quy ước điều phối (chi tiết bên dưới). Được nhét vào system prompt của orchestrator. |
 
 ### Model & effort per profile
@@ -174,6 +177,92 @@ còn skill built-in của Claude Code. Nghĩa là:
 - Orchestrator không load skill `herdr` → không trùng/lệch với instruction
   trong system prompt, không mất khi compact.
 
+## opencode
+
+### Model & effort per profile
+
+Cả 3 profile dùng `openrouter/deepseek/deepseek-v4-flash:free` (DeepSeek V4
+Flash qua OpenRouter, free tier). opencode dùng `variant` thay vì
+`effortLevel`:
+
+| Profile | Model | Variant |
+| --- | --- | --- |
+| orchestrator | `openrouter/deepseek/deepseek-v4-flash:free` | `high` — phán đoán, challenge, điều phối |
+| implementer | `openrouter/deepseek/deepseek-v4-flash:free` | `medium` — code casual |
+| peer | `openrouter/deepseek/deepseek-v4-flash:free` | `medium` — review, phản biện |
+
+### opencode permission model
+
+opencode không có sandbox mode hay profile file như Codex. Thay vào đó:
+
+- **Agent config** trong JSON (`agent.<name>.permission`) với rule `allow`/`ask`/`deny`.
+- **Last-match wins**: `*` (catch-all) để đầu, rule cụ thể để sau — rule cuối cùng khớp thắng.
+- **`--auto`** tự duyệt mọi `ask` permission; explicit `deny` vẫn enforce.
+
+Map theo vai:
+
+- **Orchestrator**: `edit: deny`, `task: deny` (chặn sub-agent), `skill: deny`,
+  bash chỉ được `herdr *` + git read-only + cat/ls/grep.
+- **Implementer**: `* : allow`, bash deny `herdr`/`herdr *`/`git push`.
+- **Peer**: `* : deny`, whitelist read + git read-only bash.
+
+### Instruction của orchestrator
+
+opencode không có `--append-system-prompt` hay `developer_instructions`. Thay
+vào đó:
+
+- Wrapper đọc `herdr-instructions.md` lúc chạy, build JSON inline.
+- Set `OPENCODE_CONFIG_CONTENT` (env var) chứa toàn bộ agent config bao gồm
+  `prompt` = nội dung file.
+- `OPENCODE_CONFIG_CONTENT` có precedence **cao hơn project config** (sau
+  project trong loading order nhưng được merge last, nên thắng) — instruction
+  không bị project config override.
+- `agent.prompt` nằm ở tầng system prompt, sống qua context compaction.
+
+### Implementer mù với opencode
+
+opencode luôn merge global `~/.config/opencode/opencode.json`. Để chặn bleed:
+
+1. `HERDR_*` env vars bị strip trong wrapper (giống Claude/Codex).
+2. Implementer config định nghĩa agent tên `coder` (peer: `reviewer`) — không
+   có herdr string nào trong file config, không có `agent.herdr-orchestrator`
+   → instruction orchestrator không bao giờ load vào session implementer.
+3. `mcp.bridgememory.enabled: false` trong implementer/peer config để tắt
+   BridgeMemory (MCP có thể chứa herdr context trong memory). Merge lên trên
+   global config, nên thắng trừ khi project config override.
+4. Không có `--append-system-prompt` hay flag nào tương đương
+   `--setting-sources project,local` của Claude để cắt toàn bộ global config.
+   Giới hạn này được ghi nhận (xem mục "Giới hạn đã biết").
+
+### Yêu cầu
+
+- opencode ≥ 1.17.20 tại `~/.opencode/bin/opencode` (hoặc set `OPENCODE_BIN`).
+- `OPENROUTER_API_KEY` đã được configure (qua `opencode providers login` hoặc
+  env var).
+
+### Cài và chạy
+
+Không cần installer (khác với Codex). Wrapper tự tìm config file theo
+đường dẫn tương đối từ vị trí của nó:
+
+```bash
+# Clone đúng đường dẫn mặc định
+git clone https://github.com/winterzxzz/herdr-profiles ~/.herdr-profiles
+
+# Chạy orchestrator trong Herdr pane
+~/.herdr-profiles/opencode-orchestrator.sh
+
+# Orchestrator sẽ spawn implementer/peer bằng
+~/.herdr-profiles/opencode-implementer.sh
+~/.herdr-profiles/opencode-peer.sh
+```
+
+Override binary path nếu cần:
+
+```bash
+OPENCODE_BIN=/usr/local/bin/opencode ~/.herdr-profiles/opencode-orchestrator.sh
+```
+
 ## Giới hạn đã biết
 
 - `orchestrator.sh` chạy ngoài Herdr sẽ tự từ chối điều khiển (check
@@ -191,3 +280,14 @@ còn skill built-in của Claude Code. Nghĩa là:
 - Named profile Codex overlay lên user config. `multi_agent`, memories và web
   search được tắt trong từng profile, nhưng Codex hiện không có equivalent tổng
   quát của Claude `--setting-sources project,local` để bỏ mọi user skill.
+- opencode implementer/peer dùng `OPENCODE_CONFIG` (giữa global và project
+  trong precedence). Không có cơ chế tương đương `--setting-sources
+  project,local` — không thể cắt toàn bộ global config. `bridgememory` MCP bị
+  tắt trong config nhưng project config có thể re-enable nó. Dùng trong
+  worktree của project thường không có bridgememory → an toàn trong thực tế.
+- opencode không có model variant "xhigh" — orchestrator dùng `high` (tier
+  cao nhất thực tế cho DeepSeek V4 Flash qua OpenRouter). Nếu model không hỗ
+  trợ thinking/reasoning variant, opencode sẽ fallback hoặc ignore nó.
+- `openrouter/deepseek/deepseek-v4-flash:free` có rate limit của free tier
+  OpenRouter. Nếu bị throttle, thay bằng `openrouter/deepseek/deepseek-v4-flash`
+  (paid) hoặc model khác bằng cách sửa model trong 3 file config.

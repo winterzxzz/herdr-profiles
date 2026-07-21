@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "bridgememory": { "enabled": false }
+  },
+  "agent": {
+    "coder": {
+      "mode": "primary",
+      "hidden": true,
+      "model": "openrouter/deepseek/deepseek-v4-flash:free",
+      "variant": "medium",
+      "description": "Full edit access for feature development",
+      "permission": {
+        "*": "allow",
+        "bash": {
+          "*": "allow",
+          "herdr": "deny",
+          "herdr *": "deny",
+          "git push": "deny",
+          "git push *": "deny"
+        }
+      }
+    }
+  }
+}

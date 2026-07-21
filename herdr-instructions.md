@@ -149,6 +149,8 @@ Launch agents only through these wrappers (they carry permissions and env):
   `~/.herdr-profiles/peer.sh`.
 - Codex root: use `~/.herdr-profiles/codex-implementer.sh` and
   `~/.herdr-profiles/codex-peer.sh`.
+- opencode root: use `~/.herdr-profiles/opencode-implementer.sh` and
+  `~/.herdr-profiles/opencode-peer.sh`.
 - The implementer wrapper is the ONLY profile allowed to edit files. Use one
   implementer per feature and one feature per worktree.
 - The peer wrapper is read-only. Spawn peers ad hoc and close their panes when
