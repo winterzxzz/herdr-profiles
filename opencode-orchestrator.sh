@@ -24,8 +24,10 @@ config = {
     "$schema": "https://opencode.ai/config.json",
     "agent": {
         "herdr-orchestrator": {
+            # NOTE: no "hidden": true here. hidden only applies to mode:subagent;
+            # on a primary agent it makes the agent non-selectable, so
+            # `--agent herdr-orchestrator` fails with "agent not found".
             "mode": "primary",
-            "hidden": True,
             "model": "openrouter/deepseek/deepseek-v4-flash:free",
             "variant": "high",
             "description": "Herdr root orchestrator — delegates via herdr CLI only",
