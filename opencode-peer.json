@@ -7,7 +7,7 @@
     "reviewer": {
       "mode": "primary",
       "hidden": true,
-      "model": "openrouter/deepseek/deepseek-v4-flash:free",
+      "model": "opencode/deepseek-v4-flash-free",
       "variant": "medium",
       "description": "Read-only code review, no edits or delegation",
       "permission": {
