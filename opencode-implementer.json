@@ -6,7 +6,6 @@
   "agent": {
     "coder": {
       "mode": "primary",
-      "hidden": true,
       "model": "opencode/deepseek-v4-flash-free",
       "variant": "medium",
       "description": "Full edit access for feature development",

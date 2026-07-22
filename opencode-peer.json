@@ -6,7 +6,6 @@
   "agent": {
     "reviewer": {
       "mode": "primary",
-      "hidden": true,
       "model": "opencode/deepseek-v4-flash-free",
       "variant": "medium",
       "description": "Read-only code review, no edits or delegation",
