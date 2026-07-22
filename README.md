@@ -181,15 +181,15 @@ còn skill built-in của Claude Code. Nghĩa là:
 
 ### Model & effort per profile
 
-Cả 3 profile dùng `openrouter/deepseek/deepseek-v4-flash:free` (DeepSeek V4
-Flash qua OpenRouter, free tier). opencode dùng `variant` thay vì
+Cả 3 profile dùng `opencode/deepseek-v4-flash-free` (DeepSeek V4
+Flash qua OpenCode Zen, free tier). opencode dùng `variant` thay vì
 `effortLevel`:
 
 | Profile | Model | Variant |
 | --- | --- | --- |
-| orchestrator | `openrouter/deepseek/deepseek-v4-flash:free` | `high` — phán đoán, challenge, điều phối |
-| implementer | `openrouter/deepseek/deepseek-v4-flash:free` | `medium` — code casual |
-| peer | `openrouter/deepseek/deepseek-v4-flash:free` | `medium` — review, phản biện |
+| orchestrator | `opencode/deepseek-v4-flash-free` | `high` — phán đoán, challenge, điều phối |
+| implementer | `opencode/deepseek-v4-flash-free` | `medium` — code casual |
+| peer | `opencode/deepseek-v4-flash-free` | `medium` — review, phản biện |
 
 ### opencode permission model
 
@@ -286,8 +286,8 @@ OPENCODE_BIN=/usr/local/bin/opencode ~/.herdr-profiles/opencode-orchestrator.sh
   tắt trong config nhưng project config có thể re-enable nó. Dùng trong
   worktree của project thường không có bridgememory → an toàn trong thực tế.
 - opencode không có model variant "xhigh" — orchestrator dùng `high` (tier
-  cao nhất thực tế cho DeepSeek V4 Flash qua OpenRouter). Nếu model không hỗ
+  cao nhất thực tế cho DeepSeek V4 Flash qua OpenCode Zen). Nếu model không hỗ
   trợ thinking/reasoning variant, opencode sẽ fallback hoặc ignore nó.
-- `openrouter/deepseek/deepseek-v4-flash:free` có rate limit của free tier
-  OpenRouter. Nếu bị throttle, thay bằng `openrouter/deepseek/deepseek-v4-flash`
+- `opencode/deepseek-v4-flash-free` có rate limit của free tier
+  OpenCode Zen. Nếu bị throttle, thay bằng `opencode/deepseek-v4-flash`
   (paid) hoặc model khác bằng cách sửa model trong 3 file config.

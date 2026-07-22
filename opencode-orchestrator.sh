@@ -28,7 +28,7 @@ config = {
             # on a primary agent it makes the agent non-selectable, so
             # `--agent herdr-orchestrator` fails with "agent not found".
             "mode": "primary",
-            "model": "openrouter/deepseek/deepseek-v4-flash:free",
+            "model": "opencode/deepseek-v4-flash-free",
             "variant": "high",
             "description": "Herdr root orchestrator — delegates via herdr CLI only",
             # prompt lands in the system-prompt layer, survives context compaction.

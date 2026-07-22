@@ -7,7 +7,7 @@
     "coder": {
       "mode": "primary",
       "hidden": true,
-      "model": "openrouter/deepseek/deepseek-v4-flash:free",
+      "model": "opencode/deepseek-v4-flash-free",
       "variant": "medium",
       "description": "Full edit access for feature development",
       "permission": {
