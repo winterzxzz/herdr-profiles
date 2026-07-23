@@ -4,7 +4,8 @@
 #   hr claude      -> orchestrator.sh
 #   hr codex       -> codex-orchestrator.sh
 #   hr opencode    -> opencode-orchestrator.sh
-#   hr supervisor  -> codex-supervisor.sh
+#   hr supervisor  -> opencode-supervisor.sh (cheapest model)
+#   hr supervisor-codex -> codex-supervisor.sh (fallback)
 #
 # Extra arguments are forwarded to the underlying wrapper, e.g.
 #   hr claude --model opus
@@ -26,7 +27,8 @@ Leads:
   opencode     opencode room Lead
 
 Audit:
-  supervisor   Read-only room supervisor (cheap model, reports anti-patterns)
+  supervisor         Read-only room supervisor (opencode, free tier)
+  supervisor-codex   Same role on Codex, if opencode is unavailable
 
 Any extra arguments are passed through to the agent CLI.
 EOF
@@ -39,7 +41,8 @@ case "$agent" in
   claude)     script="orchestrator.sh" ;;
   codex)      script="codex-orchestrator.sh" ;;
   opencode)   script="opencode-orchestrator.sh" ;;
-  supervisor) script="codex-supervisor.sh" ;;
+  supervisor)       script="opencode-supervisor.sh" ;;
+  supervisor-codex) script="codex-supervisor.sh" ;;
   -h|--help|help)
     usage
     exit 0

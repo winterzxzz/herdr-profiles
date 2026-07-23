@@ -16,8 +16,13 @@ chi tiết triển khai.
 - **Supervisor** *(tùy chọn, đứng ngoài)*: read-only, model rẻ, quan sát
   phòng và báo anti-pattern cho **người thật** qua `herdr notification show`.
   Không do Lead spawn — nó audit Lead, nên Lead không được nắm lifecycle của
-  nó. Kênh duy nhất là notification; policy hook chặn mọi lệnh `herdr` gây
-  biến đổi.
+  nó. Kênh duy nhất là notification.
+  **Một cái đủ cho cả phòng**: nó đọc room qua `herdr api snapshot` nên
+  agnostic với CLI của Lead. Mặc định chạy trên runtime rẻ nhất, vì seat này
+  sinh ra để đốt model budget thay cho context của Lead.
+  Enforcement phải ở tầng chặn được lệnh ghép: hook (Codex) hoặc plugin
+  `tool.execute.before` (opencode). Permission rule dạng glob **không đủ** —
+  `herdr agent read *` khớp luôn `herdr agent read x && herdr pane close y`.
 - Mọi vai bị **tắt cơ chế sub-agent nội bộ** của tool — herdr là kênh quản
   nhân sự duy nhất, không chạy 2 protocol điều phối song song. Xem §9.
 

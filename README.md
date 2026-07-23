@@ -41,7 +41,9 @@ một **Supervisor** read-only đứng ngoài soi anti-pattern.
 | `install-codex.sh` | Link named profiles và policy hook vào `$CODEX_HOME` (mặc định `~/.codex`). |
 | `hr` | Dispatcher: `hr claude\|codex\|opencode` chạy Lead tương ứng, `hr supervisor` chạy auditor. Không expose implementer/peer. |
 | `herdr-profile-policy.py` | `PreToolUse` policy fail-closed: khóa edit/delegation/goal ở Lead/peer/supervisor, khóa `herdr` và `git push` ở implementer, giới hạn supervisor chỉ được lệnh `herdr` read-only. |
-| `codex-supervisor.sh` / `codex-supervisor.config.toml` | Supervisor read-only, model rẻ. Đọc `supervisor-instructions.md`. Chỉ được `herdr` read-only + `notification show`. |
+| `opencode-supervisor.sh` | Supervisor mặc định (opencode, free tier). Đọc `supervisor-instructions.md`, set `HERDR_ROLE=supervisor` để arm plugin policy. |
+| `codex-supervisor.sh` / `codex-supervisor.config.toml` | Supervisor bản Codex, dự phòng. Enforcement qua policy hook. |
+| `opencode-plugins/herdr-role-policy.js` | Enforcement thật cho supervisor opencode: chặn shell metachar + allowlist `herdr` read-only. Inert nếu không có `HERDR_ROLE`. |
 | `supervisor-instructions.md` | Catalog 14 anti-pattern + cách sweep và cách báo cáo. |
 | `patch-model-cache.sh` | Tắt sub-agent ở tầng model catalog cho sol-family (`--check` / `--restore`). |
 | `plugins/attention-broker/` | Herdr plugin: push event đánh thức Lead thay vì để Lead poll. |
@@ -138,10 +140,11 @@ alias hr='~/.herdr-profiles/hr'
 ```
 
 ```bash
-hr claude       # = orchestrator.sh
-hr codex        # = codex-orchestrator.sh
-hr opencode     # = opencode-orchestrator.sh
-hr supervisor   # = codex-supervisor.sh (read-only auditor)
+hr claude            # = orchestrator.sh
+hr codex             # = codex-orchestrator.sh
+hr opencode          # = opencode-orchestrator.sh
+hr supervisor        # = opencode-supervisor.sh (read-only auditor)
+hr supervisor-codex  # = codex-supervisor.sh (dự phòng)
 
 hr claude --model opus   # arg thừa được forward xuống agent CLI
 hr --help
@@ -297,17 +300,40 @@ Plugin đặt **cạnh** `herdr-agent-state.js` chứ không sửa file đó: fi
 
 ## Supervisor
 
-Auditor read-only đứng ngoài, model rẻ (`gpt-5.4-mini`), soi phòng và báo
-anti-pattern cho **người thật**.
+Auditor read-only đứng ngoài, model rẻ, soi phòng và báo anti-pattern cho
+**người thật**.
 
 ```bash
-hr supervisor
+hr supervisor          # opencode, deepseek-v4-flash-free (free tier)
+hr supervisor-codex    # Codex, gpt-5.4-mini — dự phòng
 ```
 
+**Một cái là đủ cho cả phòng.** Nó đọc room qua `herdr api snapshot` nên
+agnostic — không quan tâm Lead đang chạy CLI nào. Mặc định dùng bản opencode vì
+seat này sinh ra để đốt model budget thay cho context của Lead, nên chọn model
+rẻ nhất.
+
 Không do Lead spawn — nó audit Lead, nên Lead không được nắm lifecycle của nó.
-Policy hook giới hạn nó ở allowlist `herdr` read-only (`agent list/get/read`,
+Bị giới hạn ở allowlist `herdr` read-only (`agent list/get/read`,
 `pane list/get/read`, `api snapshot`, `plugin log`) cộng `notification show`
 làm kênh báo cáo duy nhất. `agent start`, `pane run`, `pane close` đều bị deny.
+
+### Enforcement khác nhau giữa 2 bản
+
+- **Codex**: `PreToolUse` hook (`herdr-profile-policy.py supervisor`). Tokenize
+  lệnh, từ chối shell metachar, so bảng `(group, subcommand)`.
+- **opencode**: permission rule **không đủ**. Pattern là glob khớp cả chuỗi
+  lệnh và `*` tham lam, nên allow `herdr agent read *` khớp luôn:
+
+  ```
+  herdr agent read impl-auth && herdr pane close wA:p2
+  ```
+
+  Đúng cái mutation mà rule sinh ra để chặn. Enforcement thật nằm ở plugin
+  `herdr-role-policy.js` (`tool.execute.before`) — cùng logic với hook Python.
+  Plugin **inert** trừ khi `HERDR_ROLE` được set, nên session opencode thường
+  không bị ảnh hưởng; `opencode-supervisor.sh` set nó và từ chối chạy nếu plugin
+  chưa cài.
 
 Context của supervisor là đồ bỏ — đó chính là lý do nó gánh được việc quan sát
 lặp lại mà Lead không gánh nổi.
@@ -474,6 +500,10 @@ OPENCODE_BIN=/usr/local/bin/opencode ~/.herdr-profiles/opencode-orchestrator.sh
   Cockpit local-access refetch nó, và lúc đó `multi_agent_version` quay lại. Chạy
   `--check` sau mỗi lần update Codex; đây là mitigation, không phải fix vĩnh viễn.
   Fix thật phải đến từ upstream cho phép override per-model.
+- Supervisor opencode phụ thuộc plugin `herdr-role-policy.js` để enforce. Chưa
+  chạy `install-opencode.sh` thì wrapper từ chối khởi động (fail-closed), nhưng
+  nếu ai xóa plugin sau khi cài thì chỉ còn glob rule — mà glob thủng với lệnh
+  ghép. Bản Codex không có điểm yếu này vì hook đi kèm profile.
 - Supervisor chỉ **quan sát**, và nó suy ra anti-pattern từ scrollback +
   snapshot. Nó không thấy được reasoning của Lead, nên polling ẩn (Lead nghĩ
   nhiều mà không gọi lệnh) nằm ngoài tầm. Model rẻ cũng nghĩa là tỉ lệ báo nhầm
