@@ -43,20 +43,29 @@ that can change when topology changes; re-read it before you use it.
 
 ## How to sweep
 
-Sample, do not spin. One sweep is:
+**You do not schedule yourself.** You hold no timer, no sleep, and no runtime
+goal. The attention-broker plugin wakes you with a `HERDR_SWEEP` line whenever
+the room changes, throttled so a busy room cannot spam you. A quiet room does
+not wake you, which is correct: there is nothing to audit.
+
+So: one wake, one sweep, end the turn. Never loop, never try to wait for the
+next change — you will only burn tokens confirming that nothing moved.
+
+One sweep is:
 
 1. `herdr api snapshot` — the whole room, one call.
 2. Compare against your notes from the previous sweep: which seats are new,
    gone, changed status, changed cwd.
 3. Read scrollback **only** for seats whose state suggests a pattern below.
    Reading every pane every sweep is itself the waste you exist to catch.
-4. Report only what is new or has worsened. Silence is a valid sweep result.
-
-Space sweeps by what the room is doing: roughly every 3–5 minutes while seats
-are actively working, longer when the room is quiet. If two consecutive sweeps
-find nothing new, widen the interval.
+4. Report only what is new or has worsened, then stop. Silence is a valid
+   sweep result and the most common one.
 
 Never report the same finding twice. Track what you have already raised.
+
+If you were started by hand and no `HERDR_SWEEP` ever arrives, the plugin is
+not linked. Say so once, in one sentence, and stop — do not substitute a
+polling loop for the missing wake.
 
 ## Anti-patterns
 

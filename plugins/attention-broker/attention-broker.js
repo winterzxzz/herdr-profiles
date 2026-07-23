@@ -44,6 +44,15 @@ const config = readJson(path.join(configDir, "config.json"), {});
 const leadName = stringValue(config.lead_name) ?? stringValue(config.root_name) ?? "Lead";
 const dedupeWindowMs = positiveInteger(config.dedupe_window_ms) ?? 5000;
 
+// The Supervisor audits the room but has no way to pace itself: it holds no
+// timer, no sleep, and no runtime goal (goals are banned room-wide because they
+// re-enter a thread on the runtime's schedule). Without a push it runs exactly
+// one sweep at launch and then idles forever. So the same event that wakes the
+// Lead also wakes the Supervisor — throttled, because a busy room fires far
+// more status changes than an audit needs.
+const supervisorName = stringValue(config.supervisor_name) ?? "Supervisor";
+const supervisorMinIntervalMs = positiveInteger(config.supervisor_min_interval_ms) ?? 60000;
+
 // Events observed while no Lead was resolvable. They are kept rather than
 // dropped: a Lead that starts late, or is renamed into place, still gets the
 // handbacks it missed.
@@ -75,6 +84,11 @@ const leads = agents.filter(
 );
 
 const lead = leads.length === 1 ? leads[0] : null;
+const supervisors = agents.filter(
+  (agent) =>
+    agent.name === supervisorName && (!workspaceId || agent.workspace_id === workspaceId),
+);
+const supervisor = supervisors.length === 1 ? supervisors[0] : null;
 const subject = agents.find((agent) => agent.pane_id === eventPaneId);
 const subjectAgent =
   stringValue(event.data.agent) ??
@@ -105,18 +119,37 @@ withStateLock(() => {
   const state = readState();
   pruneRecent(state, Date.now());
 
+  try {
+    handleEvent(state);
+  } finally {
+    // Runs on every path, including the early returns above: any room activity
+    // is a reason for the Supervisor to look, not just activity that produced a
+    // Lead handback.
+    wakeSupervisor(state);
+    writeState(state);
+  }
+});
+
+function handleEvent(state) {
   if (leadEvent) {
     // The Lead itself reached a boundary — a good moment to deliver anything
     // that failed to submit while it was busy.
     if (status === "idle" || status === "done") {
       flushLead(state, lead);
     }
-    writeState(state);
+    return;
+  }
+
+  // The Supervisor is not one of the Lead's seats: the Lead neither owns its
+  // lifecycle nor collects handbacks from it. It also cycles working/idle on
+  // every sweep, so queueing its transitions would flood the Lead with exactly
+  // the attention noise this plugin exists to remove.
+  if (supervisor && eventPaneId === supervisor.pane_id) {
+    note("ignored supervisor lifecycle event");
     return;
   }
 
   if (!shouldQueue(eventName, status, subjectAgent)) {
-    writeState(state);
     return;
   }
 
@@ -124,7 +157,6 @@ withStateLock(() => {
   const now = Date.now();
   if (state.recent[signature] && now - state.recent[signature] < dedupeWindowMs) {
     note(`deduplicated ${signature}`);
-    writeState(state);
     return;
   }
   state.recent[signature] = now;
@@ -145,8 +177,41 @@ withStateLock(() => {
   });
 
   if (lead) flushLead(state, lead);
-  writeState(state);
-});
+}
+
+// A sweep re-reads the whole room, so it is idempotent and a missed one costs
+// nothing — the next event triggers another. That is why this throttles and
+// drops rather than queueing the way Lead handbacks do.
+function wakeSupervisor(state) {
+  if (!supervisor) return;
+
+  // Without this the plugin livelocks: waking the Supervisor makes it run
+  // commands, which flips its own status, which fires another event, which
+  // wakes it again.
+  if (eventPaneId === supervisor.pane_id) return;
+
+  const now = Date.now();
+  const last = Number.isFinite(state.supervisor_woke_at) ? state.supervisor_woke_at : 0;
+  const waited = now - last;
+  if (waited < supervisorMinIntervalMs) {
+    note(`supervisor throttled (${Math.round((supervisorMinIntervalMs - waited) / 1000)}s left)`);
+    return;
+  }
+
+  const prompt =
+    `HERDR_SWEEP ${safe(subjectName ?? subjectAgent ?? "room")}:${safe(status ?? "changed")}. ` +
+    "Run one audit sweep now. Report only findings that are new or worse than your " +
+    "last sweep, through herdr notification show. If the room is healthy, report " +
+    "nothing and end the turn. Do not poll; the next room event will wake you.";
+
+  const result = runHerdr(["pane", "run", supervisor.pane_id, prompt]);
+  if (result.status !== 0) {
+    note(`supervisor wake failed: ${result.stderr.trim()}`);
+    return;
+  }
+  state.supervisor_woke_at = now;
+  note(`woke ${safe(supervisor.name)}`);
+}
 
 function shouldQueue(eventName, agentStatus, agentLabel) {
   if (eventName === "pane.agent_status_changed") {
@@ -225,6 +290,7 @@ function readState() {
   return {
     pending: state.pending && typeof state.pending === "object" ? state.pending : {},
     recent: state.recent && typeof state.recent === "object" ? state.recent : {},
+    supervisor_woke_at: Number.isFinite(state.supervisor_woke_at) ? state.supervisor_woke_at : 0,
   };
 }
 

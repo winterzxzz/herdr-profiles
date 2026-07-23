@@ -43,7 +43,9 @@ herdr plugin config-dir local.herdr-attention-broker
 ```json
 {
   "lead_name": "Lead",
-  "dedupe_window_ms": 5000
+  "dedupe_window_ms": 5000,
+  "supervisor_name": "Supervisor",
+  "supervisor_min_interval_ms": 60000
 }
 ```
 
@@ -56,6 +58,26 @@ the original prototype keep working.
 herdr plugin action invoke local.herdr-attention-broker.status
 herdr plugin log list --plugin local.herdr-attention-broker
 ```
+
+## Waking the Supervisor
+
+If a seat named `Supervisor` exists, room events wake it too, with a
+`HERDR_SWEEP` line. It has no other way to run: it holds no timer, no sleep,
+and no runtime goal, so without a push it sweeps once at launch and then idles
+forever.
+
+Three rules keep that from becoming noise:
+
+- **Throttled**, default 60s. A sweep re-reads the whole room, so it is
+  idempotent and a missed one costs nothing — the next event triggers another.
+  That is why supervisor wakes are dropped rather than queued.
+- **Never woken by its own events.** Waking it makes it run commands, which
+  flips its status, which fires another event. Without the self-check the
+  plugin livelocks.
+- **Its lifecycle never reaches the Lead.** The Lead does not own the
+  Supervisor and collects no handback from it, and the Supervisor cycles
+  working/idle on every sweep — queueing those would flood the Lead with
+  exactly the attention noise this plugin removes.
 
 ## Behaviour
 
