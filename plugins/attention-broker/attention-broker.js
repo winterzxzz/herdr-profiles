@@ -190,8 +190,13 @@ function wakeSupervisor(state) {
   // wakes it again.
   if (eventPaneId === supervisor.pane_id) return;
 
+  // Keyed per seat, not per session. State is namespaced by socket, so a single
+  // scalar would let a busy workspace starve the Supervisor of every other
+  // workspace sharing this Herdr session.
   const now = Date.now();
-  const last = Number.isFinite(state.supervisor_woke_at) ? state.supervisor_woke_at : 0;
+  const last = Number.isFinite(state.supervisor_woke_at[supervisor.terminal_id])
+    ? state.supervisor_woke_at[supervisor.terminal_id]
+    : 0;
   const waited = now - last;
   if (waited < supervisorMinIntervalMs) {
     note(`supervisor throttled (${Math.round((supervisorMinIntervalMs - waited) / 1000)}s left)`);
@@ -209,7 +214,7 @@ function wakeSupervisor(state) {
     note(`supervisor wake failed: ${result.stderr.trim()}`);
     return;
   }
-  state.supervisor_woke_at = now;
+  state.supervisor_woke_at[supervisor.terminal_id] = now;
   note(`woke ${safe(supervisor.name)}`);
 }
 
@@ -290,7 +295,10 @@ function readState() {
   return {
     pending: state.pending && typeof state.pending === "object" ? state.pending : {},
     recent: state.recent && typeof state.recent === "object" ? state.recent : {},
-    supervisor_woke_at: Number.isFinite(state.supervisor_woke_at) ? state.supervisor_woke_at : 0,
+    supervisor_woke_at:
+      state.supervisor_woke_at && typeof state.supervisor_woke_at === "object"
+        ? state.supervisor_woke_at
+        : {},
   };
 }
 
