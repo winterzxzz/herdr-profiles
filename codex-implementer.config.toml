@@ -23,7 +23,7 @@ goals = false
 memories = false
 
 [[hooks.PreToolUse]]
-matcher = "^(Bash|Agent|spawn_agent|task|Task|set_goal|update_goal|manage_goal|goal)$"
+matcher = "^(Bash|Agent|spawn_agent|task|Task|set_goal|update_goal|manage_goal|goal|Skill|skill|skills|skills.list|skills.read)$"
 
 [[hooks.PreToolUse.hooks]]
 type = "command"

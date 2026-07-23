@@ -131,7 +131,18 @@ Hai cơ chế khác nhau, cùng một hậu quả: phá invariant của phòng.
   giữa chừng mà không tự biết. Tệ hơn: skill dạy điều khiển phòng bị **kế
   thừa xuống seat**, seat tự mở pane riêng → topology không còn khớp thực tế,
   mất luôn single-writer. Protocol phải nằm ở tầng system prompt đúng vì lý do
-  này. Deny tool `Skill`/`skill` ở cả 3 vai.
+  này.
+
+  Mức chặn **không đều giữa 3 CLI**:
+  - Claude: deny tool `Skill` — kín, cộng `--setting-sources project,local`
+    cắt sạch user/plugin skills.
+  - opencode: `permission.skill: deny` — kín.
+  - Codex: **chỉ chặn được một phần**. Không có tool `Skill` đơn lẻ; skill
+    filesystem đọc qua chính `SKILL.md` như file thường. Hook deny
+    `skills.list`/`skills.read` (đường provider-backed), còn đường filesystem
+    chỉ chặn bằng instruction + read-only sandbox ở vai không phải implementer.
+    Implementer đọc được `SKILL.md` nếu repo có — nhưng nó mù herdr nên skill
+    điều khiển phòng không tới tay nó.
 
 ## 9. Giết sub-agent phải đúng tầng
 

@@ -24,6 +24,12 @@ GOAL_TOOLS = {"set_goal", "update_goal", "manage_goal", "goal", "goals"}
 
 DELEGATION_TOOLS = {"Agent", "spawn_agent", "task", "Task", "subagent"}
 
+# Codex has no single `Skill` tool the way Claude does: filesystem skills are
+# read as ordinary SKILL.md files, and only provider-backed ones go through
+# these. Denying them closes the provider path; the filesystem path is closed
+# by the instruction ban plus the read-only sandbox on non-implementer roles.
+SKILL_TOOLS = {"Skill", "skill", "skills.list", "skills.read", "skills"}
+
 # The supervisor observes the room and reports; it never changes it. Only these
 # `herdr <group> <subcommand>` pairs are reachable, so a mutating command such
 # as `agent start`, `pane run`, or `pane close` is denied even though the same
@@ -122,6 +128,10 @@ def main() -> int:
 
     if tool in DELEGATION_TOOLS:
         deny("Herdr panes are the only delegation mechanism for this profile.")
+        return 0
+
+    if tool in SKILL_TOOLS:
+        deny("Skills are disabled: they die at compaction and leak room control to seats.")
         return 0
 
     if tool in GOAL_TOOLS:

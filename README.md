@@ -336,9 +336,7 @@ không chỉnh Lead. Người quyết.
 
 ## Skills — không dùng, ở mọi vai
 
-Cả 4 profile đều deny tool `Skill`/`skill`, và 3 profile Claude chạy
-`--setting-sources project,local` (đã verify: cắt sạch user skills
-`~/.claude/skills` và plugin skills). Hai lý do:
+Hai lý do:
 
 - **Skill chết khi compact.** Nó nạp vào conversation, không phải system
   prompt. Lead dựa vào skill sẽ quên protocol giữa chừng mà không tự biết.
@@ -347,6 +345,21 @@ Cả 4 profile đều deny tool `Skill`/`skill`, và 3 profile Claude chạy
 - **Skill điều khiển phòng bị kế thừa xuống seat.** Pane con load được skill
   đó thì nó tự mở pane của riêng nó — topology không còn khớp thực tế, Lead
   không thấy, không chờ, không đóng được đám owner đó. Mất luôn single-writer.
+
+### Mức chặn không đều giữa 3 CLI
+
+| CLI | Cơ chế | Kín? |
+| --- | --- | --- |
+| Claude | deny tool `Skill` + `--setting-sources project,local` (verify: cắt sạch `~/.claude/skills` và plugin skills) | kín |
+| opencode | `permission.skill: deny` ở cả 3 agent | kín |
+| Codex | hook deny `skills.list`/`skills.read` + instruction + read-only sandbox | **một phần** |
+
+Codex không có tool `Skill` đơn lẻ: skill filesystem được đọc qua chính file
+`SKILL.md` như file thường, chỉ skill provider-backed mới đi qua
+`skills.list`/`skills.read`. Nên với Codex, đường filesystem chỉ chặn được
+bằng instruction (Lead) và read-only sandbox (peer/supervisor). Implementer
+Codex vẫn đọc được `SKILL.md` nếu repo có — chấp nhận được vì nó mù herdr,
+skill điều khiển phòng không tới tay nó.
 
 Hệ quả phụ vẫn giữ: implementer/peer không bao giờ thấy skill `herdr` → premise
 "không biết bị điều khiển" kín.
