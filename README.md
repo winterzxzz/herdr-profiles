@@ -29,6 +29,7 @@ phối, 1 implementer duy nhất được sửa code, peer sinh ra ad-hoc để 
 | `peer.sh` / `peer.json` | Reviewer/critic read-only. Chỉ `Read`/`Grep`/`git diff|log|show`. Deny edit, commit, herdr. |
 | `codex-*.sh` / `codex-*.config.toml` | Ba profile tương ứng cho Codex CLI. Dùng named profile, sandbox và policy hook. |
 | `install-codex.sh` | Link named profiles và policy hook vào `$CODEX_HOME` (mặc định `~/.codex`). |
+| `hr` | Dispatcher: `hr claude\|codex\|opencode` chạy orchestrator tương ứng. Chỉ orchestrator, không expose implementer/peer. |
 | `herdr-profile-policy.py` | `PreToolUse` policy fail-closed: khóa edit/delegation ở root/peer, khóa `herdr` và `git push` ở implementer. |
 | `opencode-orchestrator.sh` | opencode root. Đọc `herdr-instructions.md` lúc chạy, nhét vào `OPENCODE_CONFIG_CONTENT` (inline config, ưu tiên cao hơn project config). Deny `edit`/`task`/`skill`, allowlist bash hẹp. |
 | `opencode-implementer.json` / `.sh` | opencode implementer (agent name `coder`). Static config không chứa herdr string: deny `herdr` + `git push` trong bash, tắt `bridgememory` MCP. Wrapper strip `HERDR_*` env. |
@@ -104,6 +105,25 @@ herdr
 
 # 3. Giao việc bằng ngôn ngữ thường
 #    "Tạo worktree cho feature X, spawn implementer làm ..., xong gọi peer review"
+```
+
+### Alias `hr`
+
+`hr` là dispatcher gọn cho ba orchestrator. Chỉ orchestrator được expose —
+implementer/peer do orchestrator spawn qua CLI `herdr`, không chạy tay.
+
+```bash
+# Thêm vào ~/.zshrc (hoặc ~/.bashrc)
+alias hr='~/.herdr-profiles/hr'
+```
+
+```bash
+hr claude      # = orchestrator.sh
+hr codex       # = codex-orchestrator.sh
+hr opencode    # = opencode-orchestrator.sh
+
+hr claude --model opus   # arg thừa được forward xuống agent CLI
+hr --help
 ```
 
 Orchestrator tự làm phần còn lại: tạo worktree, split pane (`--no-focus` nên

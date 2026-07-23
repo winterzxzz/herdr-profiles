@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# hr — launch the Herdr root orchestrator for a given agent CLI.
+#
+#   hr claude     -> orchestrator.sh
+#   hr codex      -> codex-orchestrator.sh
+#   hr opencode   -> opencode-orchestrator.sh
+#
+# Extra arguments are forwarded to the underlying wrapper, e.g.
+#   hr claude --model opus
+#
+# Implementer and peer profiles are intentionally not exposed here: they are
+# spawned by the orchestrator through the herdr CLI, not by hand.
+set -euo pipefail
+
+PROFILE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+  cat <<'EOF'
+Usage: hr <agent> [args...]
+
+Agents:
+  claude      Claude Code root orchestrator
+  codex       Codex root orchestrator
+  opencode    opencode root orchestrator
+
+Any extra arguments are passed through to the agent CLI.
+EOF
+}
+
+agent="${1:-}"
+[[ $# -gt 0 ]] && shift
+
+case "$agent" in
+  claude)   script="orchestrator.sh" ;;
+  codex)    script="codex-orchestrator.sh" ;;
+  opencode) script="opencode-orchestrator.sh" ;;
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+  "")
+    usage >&2
+    exit 1
+    ;;
+  *)
+    printf 'hr: unknown agent %s\n\n' "$agent" >&2
+    usage >&2
+    exit 1
+    ;;
+esac
+
+exec "$PROFILE_DIR/$script" "$@"
