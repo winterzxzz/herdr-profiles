@@ -1,0 +1,27 @@
+# Read-only room auditor. Cheap model on purpose: its context is disposable,
+# which is exactly why it can afford the repeated observation the Lead cannot.
+model = "gpt-5.4-mini"
+model_reasoning_effort = "medium"
+model_verbosity = "low"
+personality = "pragmatic"
+approval_policy = "never"
+sandbox_mode = "read-only"
+web_search = "disabled"
+
+[features]
+hooks = true
+# See codex-orchestrator.config.toml for why multi_agent alone is not enough on
+# sol-family models, and why goals must stay off inside a room.
+multi_agent = false
+multi_agent_v2 = false
+goals = false
+memories = false
+
+[[hooks.PreToolUse]]
+matcher = "^(Bash|apply_patch|Edit|Write|Agent|spawn_agent|task|Task|set_goal|update_goal|manage_goal|goal)$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = 'python3 "$CODEX_HOME/herdr-profile-policy.py" supervisor'
+timeout = 10
+statusMessage = "Enforcing supervisor policy"

@@ -14,6 +14,41 @@ READ_ONLY_GIT = {"status", "log", "diff", "show", "branch"}
 READ_ONLY_COMMANDS = {"cat", "grep", "jq", "ls", "pwd", "rg", "test", "wc"}
 SHELL_META = re.compile(r"[><|;&`\r\n]|\$\(")
 
+ROLES = {"orchestrator", "implementer", "peer", "supervisor"}
+
+# A goal makes the runtime re-enter the thread on its own schedule until the
+# objective is met. Inside a room with live seats that is a context-burning
+# self-poll, so no role may touch one. Names are speculative on purpose: an
+# entry that never appears simply never matches.
+GOAL_TOOLS = {"set_goal", "update_goal", "manage_goal", "goal", "goals"}
+
+DELEGATION_TOOLS = {"Agent", "spawn_agent", "task", "Task", "subagent"}
+
+# The supervisor observes the room and reports; it never changes it. Only these
+# `herdr <group> <subcommand>` pairs are reachable, so a mutating command such
+# as `agent start`, `pane run`, or `pane close` is denied even though the same
+# group is allowed for reads. `notification show` is its report channel: it
+# surfaces findings to the user without touching topology.
+SUPERVISOR_HERDR = {
+    ("agent", "list"),
+    ("agent", "get"),
+    ("agent", "read"),
+    ("agent", "explain"),
+    ("pane", "list"),
+    ("pane", "get"),
+    ("pane", "read"),
+    ("pane", "current"),
+    ("pane", "layout"),
+    ("pane", "process-info"),
+    ("api", "snapshot"),
+    ("workspace", "list"),
+    ("tab", "list"),
+    ("worktree", "list"),
+    ("plugin", "list"),
+    ("plugin", "log"),
+    ("notification", "show"),
+}
+
 
 def deny(reason: str) -> None:
     payload = {
@@ -64,8 +99,15 @@ def contains_command(tokens: list[str], executable: str, subcommand: str | None 
     return False
 
 
+def supervisor_herdr_command(tokens: list[str]) -> bool:
+    """True when tokens are a read-only `herdr <group> <subcommand> ...` call."""
+    if len(tokens) < 3:
+        return False
+    return (tokens[1], tokens[2]) in SUPERVISOR_HERDR
+
+
 def main() -> int:
-    if len(sys.argv) != 2 or sys.argv[1] not in {"orchestrator", "implementer", "peer"}:
+    if len(sys.argv) != 2 or sys.argv[1] not in ROLES:
         deny("Unknown Herdr Codex role; refusing the tool call.")
         return 0
 
@@ -78,11 +120,19 @@ def main() -> int:
     role = sys.argv[1]
     tool = str(event.get("tool_name", ""))
 
-    if tool in {"Agent", "spawn_agent"}:
+    if tool in DELEGATION_TOOLS:
         deny("Herdr panes are the only delegation mechanism for this profile.")
         return 0
 
-    if tool in {"apply_patch", "Edit", "Write"}:
+    if tool in GOAL_TOOLS:
+        deny("Runtime goals are disabled: they re-enter the thread on a timer and poll the room.")
+        return 0
+
+    # The implementer is the one role that may write. Every other role is
+    # read-only. This is checked here rather than left to each profile's hook
+    # matcher: a matcher that stops listing an edit tool would silently open a
+    # hole, whereas this stays closed no matter what reaches the hook.
+    if tool in {"apply_patch", "Edit", "Write", "NotebookEdit"} and role != "implementer":
         deny(f"The {role} profile is read-only.")
         return 0
 
@@ -102,8 +152,19 @@ def main() -> int:
             deny("The implementer profile cannot push; leave publication to the user.")
         return 0
 
-    if role == "orchestrator" and executable == "herdr" and len(tokens) > 1:
-        return 0
+    if executable == "herdr":
+        # Bare `herdr` launches or attaches the TUI; it is never a control call.
+        if len(tokens) < 2:
+            deny("Bare `herdr` opens the TUI; use an explicit subcommand.")
+            return 0
+        if role == "orchestrator":
+            return 0
+        if role == "supervisor":
+            if supervisor_herdr_command(tokens):
+                return 0
+            deny("The supervisor profile may only read room state, never change it.")
+            return 0
+
     if read_only_command(tokens):
         return 0
 

@@ -8,11 +8,19 @@ web_search = "disabled"
 
 [features]
 hooks = true
+# multi_agent alone is NOT enough on sol-family models: the model catalog
+# carries a per-model multi_agent_version = "v2" that overrides it. Run
+# ./patch-model-cache.sh to strip that key. See README "Subagent v2".
 multi_agent = false
+multi_agent_v2 = false
+# goals drives runtime self-continuation: the thread is re-entered on the
+# runtime's schedule until the objective is met. Inside a Herdr room that is a
+# context-burning poll loop. Never enable.
+goals = false
 memories = false
 
 [[hooks.PreToolUse]]
-matcher = "^(Bash|apply_patch|Edit|Write|Agent|spawn_agent)$"
+matcher = "^(Bash|apply_patch|Edit|Write|Agent|spawn_agent|task|Task|set_goal|update_goal|manage_goal|goal)$"
 
 [[hooks.PreToolUse.hooks]]
 type = "command"

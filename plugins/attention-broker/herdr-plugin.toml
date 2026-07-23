@@ -1,0 +1,24 @@
+id = "local.herdr-attention-broker"
+name = "Herdr Attention Broker"
+version = "0.2.0"
+min_herdr_version = "0.7.4"
+description = "Wake the room Lead once when another seat needs attention, so the Lead never polls."
+platforms = ["linux", "macos"]
+
+[[actions]]
+id = "status"
+title = "Show pending attention events"
+contexts = ["global"]
+command = ["node", "attention-broker.js", "status"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["node", "attention-broker.js", "event"]
+
+[[events]]
+on = "pane.exited"
+command = ["node", "attention-broker.js", "event"]
+
+[[events]]
+on = "pane.closed"
+command = ["node", "attention-broker.js", "event"]
