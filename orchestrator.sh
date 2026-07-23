@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Root orchestrator: full Herdr instructions in the system prompt (survives
+# Room Lead: full Herdr instructions in the system prompt (survives
 # compaction), no edit rights. Run inside a Herdr-managed pane.
 set -euo pipefail
 

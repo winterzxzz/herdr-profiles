@@ -6,7 +6,10 @@
     "deny": [
       "Bash(herdr:*)",
       "Bash(git push:*)",
-      "WebSearch"
+      "WebSearch",
+      "Skill",
+      "Task",
+      "Agent"
     ],
     "allow": [
       "Edit",

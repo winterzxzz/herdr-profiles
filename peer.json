@@ -9,7 +9,10 @@
       "Bash(herdr:*)",
       "Bash(git push:*)",
       "Bash(git commit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Skill",
+      "Task",
+      "Agent"
     ],
     "allow": [
       "Read",
