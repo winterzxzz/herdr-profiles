@@ -56,7 +56,18 @@ const supervisorMinIntervalMs = positiveInteger(config.supervisor_min_interval_m
 // Events observed while no Lead was resolvable. They are kept rather than
 // dropped: a Lead that starts late, or is renamed into place, still gets the
 // handbacks it missed.
-const ORPHAN_KEY = "__unresolved_lead__";
+//
+// Bucketed per workspace, because delivery resolves the Lead per workspace too.
+// One global bucket let a room adopt another room's backlog: a seat going idle
+// in an unrelated project was handed to whichever Lead flushed first, and that
+// is worse than a dropped wake — the Lead then supervises a seat it does not
+// own. Events whose workspace is unknown stay in their own bucket and are never
+// adopted; a stranded wake beats a misdelivered one.
+const ORPHAN_PREFIX = "__unresolved_lead__";
+
+function orphanKey(workspaceId) {
+  return `${ORPHAN_PREFIX}:${workspaceId ?? "unknown"}`;
+}
 
 if (mode === "status") {
   process.stdout.write(
@@ -163,7 +174,7 @@ function handleEvent(state) {
 
   // Persist before delivery. A failed `pane run` must leave the event queued,
   // never lost.
-  const key = lead ? lead.terminal_id : ORPHAN_KEY;
+  const key = lead ? lead.terminal_id : orphanKey(workspaceId);
   state.pending[key] ??= [];
   state.pending[key].push({
     signature,
@@ -226,12 +237,15 @@ function shouldQueue(eventName, agentStatus, agentLabel) {
 }
 
 function flushLead(state, lead) {
-  // Adopt anything queued while no Lead was resolvable.
-  if (state.pending[ORPHAN_KEY]?.length) {
+  // Adopt anything queued for this Lead's own workspace while it was
+  // unresolvable. Other workspaces' buckets are left untouched: they belong to
+  // another room's Lead, even when that Lead does not exist yet.
+  const orphans = orphanKey(lead.workspace_id);
+  if (state.pending[orphans]?.length) {
     state.pending[lead.terminal_id] ??= [];
-    state.pending[lead.terminal_id].push(...state.pending[ORPHAN_KEY]);
-    note(`adopted ${state.pending[ORPHAN_KEY].length} orphaned event(s)`);
-    delete state.pending[ORPHAN_KEY];
+    state.pending[lead.terminal_id].push(...state.pending[orphans]);
+    note(`adopted ${state.pending[orphans].length} orphaned event(s)`);
+    delete state.pending[orphans];
   }
 
   const pending = state.pending[lead.terminal_id] ?? [];

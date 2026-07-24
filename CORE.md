@@ -122,6 +122,14 @@ và Lead compact giữa chừng là mất phòng.
 - **Event-driven thay poll**: plugin `attention-broker` push một prompt
   `HERDR_ATTENTION_EVENT` vào pane Lead khi seat khác `idle`/`done`/`blocked`.
   Persist trước khi gửi, gửi fail thì giữ queue, retry khi Lead `idle`.
+- **Có broker thì kết thúc lượt, đừng chờ**: wake được gõ vào pane Lead nên chỉ
+  đọc được khi Lead đang ở prompt. Lead ngồi trong `agent wait` dài thì mọi wake
+  chất đống trong input queue, nhận một cục sau nhiều phút — đúng cái giá của
+  polling mà broker sinh ra để xoá. **Idle mới là trạng thái đã lên đạn.**
+- **Chờ thì chờ đủ 3 trạng thái**: `herdr agent wait` bỏ trống `--until` là đã
+  gồm `idle`/`done`/`blocked`. Chỉ định một trạng thái duy nhất là cách treo:
+  seat đứng ở permission prompt nằm im tại `blocked`, `--until idle` chờ hết
+  timeout trong khi câu trả lời đang hiện trên màn hình.
 
 ## 8. Cấm goal, cấm skill
 
