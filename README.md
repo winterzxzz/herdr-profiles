@@ -170,7 +170,7 @@ User ──nói chuyện──> Lead (pane gốc, không edit được)
                           │       └─> Implementer (edit trong worktree,
                           │           tưởng đang nghe lệnh user thật)
                           │
-                          ├─ herdr wait agent-status ... --status done/idle
+                          ├─ herdr agent wait ...      # idle/done/blocked
                           ├─ blocked? → đọc câu hỏi, trả lời nhập vai user
                           │
                           ├─ herdr pane split + run peer.sh

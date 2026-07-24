@@ -97,9 +97,11 @@ Records expose `agent`, `agent_status`, and session metadata. Status is
 yet seen. A background-pane completion reports `done`; a completion in the
 focused active tab reports `idle`. **Always treat either as completed.**
 
-`herdr agent wait --status idle` already folds `done` into `idle`; prefer it
-over `herdr wait agent-status`, which requires you to guess which of the two
-that CLI will report and hangs forever if you guess wrong.
+`herdr agent wait` with no `--until` already matches `idle`, `done`, **and**
+`blocked` — the three states that mean "this seat has stopped moving". Prefer
+the bare form. Naming a single state is how you hang forever: a seat parked at
+a permission prompt sits at `blocked` and never reaches `idle`, so
+`--until idle` waits out its full timeout while the answer is on screen.
 
 `blocked` means the agent needs input. `unknown` means no detected agent yet.
 
@@ -124,7 +126,7 @@ background work so the user's focus stays put.
 Wait for the seat to reach its prompt, then submit the task:
 
 ```bash
-herdr agent wait impl-auth --status idle --timeout 30000
+herdr agent wait impl-auth --timeout 30000
 herdr pane run <pane-id> "<task text>"
 ```
 
@@ -170,19 +172,29 @@ compaction and must not leak downward.
 
 ### Wait on events, not on clocks
 
-Prefer the attention-broker plugin if the room has it linked: it wakes you
-once, with a `HERDR_ATTENTION_EVENT` line, when a seat becomes `idle`, `done`,
-or `blocked`. When it wakes you, consume the handback and make the next
-supervision decision. Do not re-arm by looping.
+If the room has the attention-broker plugin linked, it wakes you once, with a
+`HERDR_ATTENTION_EVENT` line, when a seat becomes `idle`, `done`, or `blocked`.
+When it wakes you, consume the handback and make the next supervision decision.
+Do not re-arm by looping.
+
+**With the broker linked, end your turn instead of waiting.** A wake is
+delivered by typing into your pane, so it can only be read when you are back at
+a prompt. Block on a long `herdr agent wait` and every wake it delivers piles
+up unread in your input queue — you get the whole backlog at once, minutes
+late, which is the polling cost the broker exists to remove. Idle is your
+armed state.
 
 Without the plugin, use one bounded `herdr agent wait` per seat you actually
 need to hear from:
 
 ```bash
-herdr agent wait impl-auth --status idle --timeout 60000
-herdr agent wait impl-auth --status blocked --timeout 60000
-herdr wait output <pane-id> --match '<expected text>' --timeout 60000
+herdr agent wait impl-auth --timeout 60000
+herdr pane wait-output <pane-id> --match '<expected text>' --timeout 60000
 ```
+
+Leave `--until` off: the default already covers `idle`, `done`, and `blocked`.
+Narrow it only when one specific state is the whole answer, and never to
+`--until idle` on a seat that can stop for input.
 
 A wait observes **one** future condition and returns. It is not a supervision
 loop.
