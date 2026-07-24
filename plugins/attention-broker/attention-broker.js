@@ -80,13 +80,13 @@ const agents = listAgents();
 const workspaceId = event.data.workspace_id ?? context.workspace_id;
 const eventPaneId = event.data.pane_id ?? context.focused_pane_id;
 const leads = agents.filter(
-  (agent) => agent.name === leadName && (!workspaceId || agent.workspace_id === workspaceId),
+  (agent) => seatName(agent) === leadName && (!workspaceId || agent.workspace_id === workspaceId),
 );
 
 const lead = leads.length === 1 ? leads[0] : null;
 const supervisors = agents.filter(
   (agent) =>
-    agent.name === supervisorName && (!workspaceId || agent.workspace_id === workspaceId),
+    seatName(agent) === supervisorName && (!workspaceId || agent.workspace_id === workspaceId),
 );
 const supervisor = supervisors.length === 1 ? supervisors[0] : null;
 const subject = agents.find((agent) => agent.pane_id === eventPaneId);
@@ -94,14 +94,14 @@ const subjectAgent =
   stringValue(event.data.agent) ??
   stringValue(subject?.agent) ??
   stringValue(context.focused_pane_agent);
-const subjectName = stringValue(subject?.name);
+const subjectName = seatName(subject);
 const status = stringValue(event.data.agent_status) ?? stringValue(subject?.agent_status);
 const leadEvent = Boolean(lead) && eventPaneId === lead.pane_id;
 
 note(
   `${eventName} pane=${safe(eventPaneId)} status=${safe(status ?? "none")} ` +
     `subject=${safe(subjectName ?? subjectAgent ?? "unknown")} ` +
-    `lead=${lead ? safe(lead.name) : "unresolved"}`,
+    `lead=${lead ? safe(seatName(lead)) : "unresolved"}`,
 );
 
 if (!lead) {
@@ -262,24 +262,45 @@ function seatLabel(item) {
 // is submitted into the Lead's prompt. Without this, renaming a pane would let
 // arbitrary text — including instructions — reach the Lead as if the room had
 // said it. Restrict to an identifier-ish charset and cap the length.
+// A seat's name is `label` in the herdr CLI (0.7.x), set by `pane rename`.
+// The upstream prototype read `name`, a field the CLI has never emitted, so
+// every seat compared unequal to the configured Lead name and no wake was ever
+// delivered. `name` is kept as a fallback in case the field is reintroduced.
+function seatName(agent) {
+  return stringValue(agent?.label) ?? stringValue(agent?.name);
+}
+
 function safe(value) {
   const text = typeof value === "string" ? value : String(value ?? "");
   const cleaned = text.replace(/[^\w.@:/-]+/g, "_").slice(0, 48);
   return cleaned || "unknown";
 }
 
+// `herdr agent list` carries no seat name at all — the name set by
+// `pane rename` is only ever exposed as `label` on `herdr pane list`. So the
+// two are joined on pane_id, and every agent gains the `label` its own record
+// omits. Without this the Lead can never be resolved by name.
 function listAgents() {
-  const result = runHerdr(["agent", "list"]);
+  const agents = herdrJson(["agent", "list"])?.result?.agents ?? [];
+  const labels = new Map(
+    (herdrJson(["pane", "list"])?.result?.panes ?? [])
+      .filter((pane) => pane.pane_id)
+      .map((pane) => [pane.pane_id, pane.label]),
+  );
+  return agents.map((agent) => ({ ...agent, label: agent.label ?? labels.get(agent.pane_id) }));
+}
+
+function herdrJson(args) {
+  const label = `herdr ${args.join(" ")}`;
+  const result = runHerdr(args);
   if (result.status !== 0) {
-    fail(`herdr agent list failed: ${result.stderr.trim()}`);
+    fail(`${label} failed: ${result.stderr.trim()}`);
   }
-  let parsed;
   try {
-    parsed = JSON.parse(result.stdout);
+    return JSON.parse(result.stdout);
   } catch (error) {
-    fail(`herdr agent list returned invalid JSON: ${error.message}`);
+    fail(`${label} returned invalid JSON: ${error.message}`);
   }
-  return parsed?.result?.agents ?? [];
 }
 
 function runHerdr(args) {
