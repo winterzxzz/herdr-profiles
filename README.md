@@ -35,7 +35,7 @@ một **Supervisor** read-only đứng ngoài soi anti-pattern.
 | File | Vai trò |
 | --- | --- |
 | `orchestrator.sh` / `orchestrator.json` | Lead (Claude). Load full herdr instruction vào system prompt. Deny `Edit`/`Write`/`Task`/`Agent`/`Skill`, allow `Bash(herdr:*)` + lệnh đọc. |
-| `implementer.sh` / `implementer.json` | Đứa duy nhất được edit. Strip toàn bộ env `HERDR_*`, `--setting-sources project,local` (bỏ user settings). `acceptEdits` + allowlist git/test/build rộng để không bị hỏi vặt. Deny `herdr`, `git push`. |
+| `implementer.sh` / `implementer.json` | Đứa duy nhất được edit. Strip toàn bộ env `HERDR_*`, `--setting-sources project,local` (bỏ user settings). `bypassPermissions` — seat chạy không người ngồi cạnh, mỗi prompt hỏi phép là một lần treo. Deny `herdr`, `git push`, `Skill`, `Task`, `Agent` vẫn enforce. |
 | `peer.sh` / `peer.json` | Reviewer/critic read-only. Chỉ `Read`/`Grep`/`git diff|log|show`. Deny edit, commit, herdr. |
 | `codex-*.sh` / `codex-*.config.toml` | Ba profile tương ứng cho Codex CLI. Dùng named profile, sandbox và policy hook. |
 | `install-codex.sh` | Link named profiles và policy hook vào `$CODEX_HOME` (mặc định `~/.codex`). |
@@ -496,6 +496,13 @@ OPENCODE_BIN=/usr/local/bin/opencode ~/.herdr-profiles/opencode-orchestrator.sh
   chặn được bằng instruction ("mọi thay đổi repo đi qua implementer"), nên
   chỉ dùng bypass trên máy local tự giám sát, không dùng nơi có credentials
   production.
+- Implementer cũng chạy `bypassPermissions`, cùng đánh đổi như Lead: bash
+  không giới hạn, chỉ `deny` chặn được. Lý do không giữ allowlist: allowlist
+  khớp theo **prefix lệnh**, nên `NODE_PATH=... node x.js` không khớp
+  `Bash(node:*)` và `sed -i ''` không khớp gì cả. Mỗi lệnh lệch dạng là một
+  permission prompt → seat `blocked` → broker đánh thức Lead, mà Lead thì
+  không bấm Yes hộ được. Quan sát thực tế: 9 lần wake trong 7 phút, không lần
+  nào gỡ được. Allowlist ở đây tạo ra deadlock chứ không tạo ra an toàn.
 - Codex Lead dùng full access để CLI `herdr` kết nối runtime mà không
   bị sandbox chặn. Giống Claude `bypassPermissions`, policy hook chặn tool edit
   nhưng lệnh `herdr` vẫn có quyền điều khiển pane; chỉ dùng sau khi review và
