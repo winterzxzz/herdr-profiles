@@ -14,6 +14,12 @@ transport.
 ## Install
 
 ```bash
+~/.herdr-profiles/install-herdr-plugins.sh
+```
+
+That wraps the underlying commands, which also work by hand:
+
+```bash
 herdr plugin link ~/.herdr-profiles/plugins/attention-broker
 herdr plugin list
 ```
@@ -92,7 +98,7 @@ Three rules keep that from becoming noise:
 ## Differences from the upstream prototype
 
 This is derived from the Herdr author's `attention-broker` prototype, with
-three changes:
+four changes:
 
 1. **macOS support.** The original declared `platforms = ["linux"]`, so it never
    loaded on Darwin.
@@ -109,3 +115,12 @@ three changes:
    seat, which turns a misnamed pane into a Lead that waits forever for a wake
    that was never queued. Unresolvable events now go to a holding queue, log a
    warning, and are adopted by the Lead as soon as one appears.
+
+4. **Seats are matched on a field the CLI actually emits.** The original
+   resolved the Lead by `agent.name` over `herdr agent list`. That list has no
+   seat-name field at all — the name set by `pane rename` is exposed only as
+   `label`, and only on `herdr pane list` — so the comparison was always
+   `undefined === "Lead"` and no Lead was ever resolved on any machine. The two
+   listings are now joined on `pane_id`. Because change 3 above queues rather
+   than drops, the symptom was not a crash but a Lead that stayed silent while
+   the warning accumulated in the plugin log.

@@ -47,6 +47,7 @@ một **Supervisor** read-only đứng ngoài soi anti-pattern.
 | `supervisor-instructions.md` | Catalog 14 anti-pattern + cách sweep và cách báo cáo. |
 | `patch-model-cache.sh` | Tắt sub-agent ở tầng model catalog cho sol-family (`--check` / `--restore`). |
 | `plugins/attention-broker/` | Herdr plugin: push event đánh thức Lead thay vì để Lead poll. |
+| `install-herdr-plugins.sh` | `herdr plugin link` cho plugin trên. Tách khỏi hai script install kia vì đăng ký qua herdr CLI, cần server đang chạy. |
 | `opencode-plugins/herdr-no-subagent.js` | Chặn cứng tool `task` của opencode ở mọi session. |
 | `install-opencode.sh` | Link plugin trên vào `~/.config/opencode/plugins`. |
 | `opencode-orchestrator.sh` | opencode Lead. Đọc `herdr-instructions.md` lúc chạy, nhét vào `OPENCODE_CONFIG_CONTENT` (inline config, ưu tiên cao hơn project config). Deny `edit`/`task`/`skill`, allowlist bash hẹp. |
@@ -93,6 +94,7 @@ sau đó cài profile:
 git clone https://github.com/winterzxzz/herdr-profiles ~/.herdr-profiles
 cd ~/.herdr-profiles
 ./install-codex.sh
+./install-herdr-plugins.sh
 ```
 
 Installer chỉ tạo symlink sau, không thay `~/.codex/config.toml`:
@@ -237,17 +239,23 @@ Ba quy tắc nằm trong `herdr-instructions.md`:
 Đảo chiều: Herdr bắn event, plugin đẩy đúng một prompt vào pane Lead.
 
 ```bash
-herdr plugin link ~/.herdr-profiles/plugins/attention-broker
+./install-herdr-plugins.sh
 herdr pane rename <lead-pane-id> "Lead"    # plugin tìm Lead theo tên seat
 ```
+
+Bước rename không phải tùy chọn: plugin tìm Lead theo tên seat, nên phòng chưa
+được nối cho tới khi pane có tên. Thiếu bước này thì không có gì hỏng ồn ào —
+event nằm im trong queue chưa resolve còn Lead thì trông như đang rảnh.
 
 Persist trước khi gửi, gửi fail thì giữ queue và retry khi Lead `idle`, dedupe
 theo `event:workspace:pane:status`, state namespace theo session socket.
 
-Fork từ prototype của tác giả Herdr, khác 3 điểm: chạy được trên macOS, sanitize
+Fork từ prototype của tác giả Herdr, khác 4 điểm: chạy được trên macOS, sanitize
 tên seat trước khi nó vào prompt của Lead (tên seat do `pane rename` sinh ra —
-user-controlled, bản gốc nhét thẳng vào `pane run`), và queue lại thay vì
-`exit 0` im lặng khi không tìm thấy Lead. Chi tiết:
+user-controlled, bản gốc nhét thẳng vào `pane run`), queue lại thay vì `exit 0`
+im lặng khi không tìm thấy Lead, và match seat bằng field mà CLI thật sự trả về
+(`herdr agent list` không có tên seat — tên chỉ nằm ở `label` của
+`herdr pane list`, nên bản gốc không bao giờ resolve được Lead). Chi tiết:
 `plugins/attention-broker/README.md`.
 
 ## Cấm goal
